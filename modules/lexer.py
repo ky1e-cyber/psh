@@ -4,6 +4,7 @@ from typing import Tuple, Iterator, List, Set, Dict, TextIO
 
 def lexer_lines(input_stream: TextIO) -> Iterator[List[Token]]:
 
+    
     def match_word(segment: str) -> Tuple[Token, str]:
         pos: int = 0
         for char in segment:
@@ -11,25 +12,57 @@ def lexer_lines(input_stream: TextIO) -> Iterator[List[Token]]:
              (char in token_chars_set) or (char in str_chars_set)):
                 break
             pos += 1
-        return Token(TokenType.WORD, literal=segment[:pos]), segment[pos::]
+
+        word = segment[:pos]
+
+        if word.isdecimal():
+            return (Token(TokenType.NUMBER, int(word)), 
+                    segment[pos::])
+
+        return (Token(TokenType.WORD, literal=segment[:pos]) 
+                    if word not in keywords.keys() 
+                    else Token(keywords[word]), 
+                segment[pos::])
 
     def match_string(segment: str, term_char: str) -> Tuple[Token, str]:
         pos: int = segment.find(term_char)
         return ( (Token(TokenType.WORD, literal=segment[:pos]), segment[pos + 1:]) 
-                    if pos != -1 
+                    if pos != -1
                     else (Token(TokenType.UNEXP), "") )
 
     re_whitespaces = re.compile(r"[ \t]+")
 
     single_char_map: Dict[str, TokenType] = {
-        '<': TokenType.REDIN,
-        '|': TokenType.PIPE,
-        ';': TokenType.SEMICOLON,
-        '\n': TokenType.NEWLINE
+        '<' : TokenType.REDIN,
+        '|' : TokenType.PIPE,
+        ';' : TokenType.SEMICOLON,
+        '=' : TokenType.BIND,
+        '\n': TokenType.NEWLINE,
+        '+' : TokenType.PLUS,
+        '-' : TokenType.MINUS,
+        '*' : TokenType.STAR,
+        '/' : TokenType.SLASH,
+        '{' : TokenType.LBRACKET,
+        '}' : TokenType.RBRACKET,
+        '(' : TokenType.LPAREN,
+        ')' : TokenType.RPAREN,
+        ',' : TokenType.COMMA
     }
 
     double_char_map: Dict[str, Tuple[str, TokenType, TokenType]] = {
         '>': ('>', TokenType.REDOUT, TokenType.DOUBLE_REDOUT)
+    }
+
+    keywords: Dict[str, TokenType] = {
+        "let" : TokenType.LET,
+        "fn"  : TokenType.FN,
+        "eq"  : TokenType.EQ,
+        "ne"  : TokenType.NE,
+        "lt"  : TokenType.LT,
+        "le"  : TokenType.LE,
+        "gt"  : TokenType.GT,
+        "ge"  : TokenType.GE,
+        "not" : TokenType.NOT
     }
 
     token_chars_set: Set[str] =\
@@ -68,8 +101,7 @@ def lexer_lines(input_stream: TextIO) -> Iterator[List[Token]]:
             else:
                 token, line = match_word(line)
                 tokens_line.append(token) 
-        
-        tokens_line.append(Token(TokenType.EOS))
-
+                
         yield tokens_line
 
+    yield [Token(TokenType.EOS)]
